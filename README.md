@@ -6,6 +6,8 @@ Integration of Fusion+ with NEAR
 
 Initial development of Jincubatore NEAR Fusion+ is being developed as part of Unite DeFi 2025.
 
+For a technical overview please see [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/jincubator-united-defi-2025/near-fusion-plus)
+
 ## How to Build Locally?
 
 Install [`cargo-near`](https://github.com/near/cargo-near) and run:
