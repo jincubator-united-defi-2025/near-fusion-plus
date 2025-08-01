@@ -1,0 +1,22 @@
+[package]
+name = "integration-tests"
+description = "Integration tests for cross-chain swap contracts"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+near-sdk = { version = "5.4.0", features = ["unit-testing", "legacy"] }
+near-workspaces = { version = "0.14.1", features = ["unstable"] }
+tokio = { version = "1.12.0", features = ["full"] }
+serde_json = "1"
+anyhow = "1.0"
+
+# Local contract dependencies
+escrow-src = { path = "../src/escrow-src" }
+escrow-dst = { path = "../src/escrow-dst" }
+escrow-factory = { path = "../src/escrow-factory" }
+cross-chain-swap = { path = "../src/cross-chain-swap" }
+limit-order-protocol = { path = "../src/limit-order-protocol" }
+
+[dev-dependencies]
+near-sdk = { version = "5.4.0", features = ["unit-testing", "legacy"] } 
