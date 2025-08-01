@@ -1,8 +1,8 @@
 // Find all our documentation at https://docs.near.org
 use near_sdk::{
-    env, log, near, AccountId, Gas, Promise, NearToken,
+    env, log, AccountId, Gas, Promise, NearToken,
     collections::UnorderedMap,
-    ext_contract,
+    ext_contract, borsh::{BorshSerialize, BorshDeserialize},
 };
 use crate::types::{Order, Extension, MakerTraits, BitInvalidatorData, RemainingInvalidator, LimitOrderError};
 use crate::utils::{hash_order, validate_signature, is_order_expired, validate_order_amounts};
@@ -11,7 +11,7 @@ use crate::utils::{hash_order, validate_signature, is_order_expired, validate_or
 const GAS_FOR_FT_TRANSFER: Gas = Gas::from_tgas(10);
 
 /// Order mixin for processing limit orders
-#[near(contract_state)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct OrderMixin {
     domain_separator: [u8; 32],
     weth: AccountId,
@@ -32,10 +32,8 @@ impl Default for OrderMixin {
     }
 }
 
-#[near]
 impl OrderMixin {
     /// Initialize the contract
-    #[init]
     pub fn new(domain_separator: [u8; 32], weth: AccountId) -> Self {
         Self {
             domain_separator,
@@ -108,7 +106,6 @@ impl OrderMixin {
     }
 
     /// Fill order
-    #[handle_result]
     pub fn fill_order(
         &mut self,
         order: Order,

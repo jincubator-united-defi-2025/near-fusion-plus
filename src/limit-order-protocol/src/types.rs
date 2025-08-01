@@ -18,7 +18,9 @@ pub struct Order {
 }
 
 /// Maker traits for order customization
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[derive(
+    BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default,
+)]
 pub struct MakerTraits {
     pub use_bit_invalidator: bool,
     pub use_epoch_manager: bool,
@@ -55,7 +57,9 @@ impl MakerTraits {
 }
 
 /// Taker traits for order execution
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[derive(
+    BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default,
+)]
 pub struct TakerTraits {
     pub allow_multiple_fills: bool,
     pub allow_partial_fill: bool,
@@ -131,7 +135,9 @@ impl RemainingInvalidator {
 }
 
 /// Extension data for order customization
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[derive(
+    BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default,
+)]
 pub struct Extension {
     pub maker_amount_data: Vec<u8>,
     pub taker_amount_data: Vec<u8>,
@@ -201,4 +207,40 @@ pub enum LimitOrderError {
     OrderInvalidated,
     InvalidAmounts,
     InvalidExtension,
-} 
+}
+
+impl AsRef<str> for LimitOrderError {
+    fn as_ref(&self) -> &str {
+        match self {
+            LimitOrderError::InvalidatedOrder => "InvalidatedOrder",
+            LimitOrderError::TakingAmountExceeded => "TakingAmountExceeded",
+            LimitOrderError::PrivateOrder => "PrivateOrder",
+            LimitOrderError::InvalidSignature => "InvalidSignature",
+            LimitOrderError::OrderExpired => "OrderExpired",
+            LimitOrderError::WrongSeriesNonce => "WrongSeriesNonce",
+            LimitOrderError::SwapWithZeroAmount => "SwapWithZeroAmount",
+            LimitOrderError::PartialFillNotAllowed => "PartialFillNotAllowed",
+            LimitOrderError::OrderIsNotSuitableForMassInvalidation => {
+                "OrderIsNotSuitableForMassInvalidation"
+            }
+            LimitOrderError::EpochManagerAndBitInvalidatorsAreIncompatible => {
+                "EpochManagerAndBitInvalidatorsAreIncompatible"
+            }
+            LimitOrderError::ReentrancyDetected => "ReentrancyDetected",
+            LimitOrderError::PredicateIsNotTrue => "PredicateIsNotTrue",
+            LimitOrderError::TakingAmountTooHigh => "TakingAmountTooHigh",
+            LimitOrderError::MakingAmountTooLow => "MakingAmountTooLow",
+            LimitOrderError::TransferFromMakerToTakerFailed => "TransferFromMakerToTakerFailed",
+            LimitOrderError::TransferFromTakerToMakerFailed => "TransferFromTakerToMakerFailed",
+            LimitOrderError::MismatchArraysLengths => "MismatchArraysLengths",
+            LimitOrderError::InvalidPermit2Transfer => "InvalidPermit2Transfer",
+            LimitOrderError::MissingOrderExtension => "MissingOrderExtension",
+            LimitOrderError::UnexpectedOrderExtension => "UnexpectedOrderExtension",
+            LimitOrderError::InvalidExtensionHash => "InvalidExtensionHash",
+            LimitOrderError::ContractPaused => "ContractPaused",
+            LimitOrderError::OrderInvalidated => "OrderInvalidated",
+            LimitOrderError::InvalidAmounts => "InvalidAmounts",
+            LimitOrderError::InvalidExtension => "InvalidExtension",
+        }
+    }
+}

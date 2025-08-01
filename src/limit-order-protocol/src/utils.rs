@@ -1,5 +1,4 @@
 use crate::types::{Extension, LimitOrderError, Order};
-use near_sdk::env;
 
 /// Compute hash of an order
 pub fn hash_order(order: &Order, domain_separator: &[u8; 32]) -> [u8; 32] {
@@ -160,10 +159,10 @@ pub fn validate_order_amounts(order: &Order, taking_amount: u128) -> bool {
     if taking_amount == 0 {
         return false;
     }
-    
+
     if taking_amount > order.taking_amount {
         return false;
     }
-    
+
     true
 }

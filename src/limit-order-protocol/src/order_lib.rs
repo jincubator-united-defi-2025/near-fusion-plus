@@ -1,15 +1,12 @@
 // Find all our documentation at https://docs.near.org
 use crate::types::{Extension, LimitOrderError, Order};
-use crate::utils::{
-    calculate_making_amount, calculate_taking_amount, get_receiver, hash_order, validate_extension,
-};
-use near_sdk::{ext_contract, log, near, AccountId, Gas, NearToken, Promise};
+use near_sdk::{ext_contract, log, AccountId, Gas, NearToken, Promise, borsh::{BorshSerialize, BorshDeserialize}};
 
 // Gas for cross-contract calls
 const GAS_FOR_FT_TRANSFER: Gas = Gas::from_tgas(10);
 
 /// Order library for processing limit orders
-#[near(contract_state)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct OrderLib {
     domain_separator: [u8; 32],
 }
@@ -22,26 +19,27 @@ impl Default for OrderLib {
     }
 }
 
-#[near]
 impl OrderLib {
     /// Initialize the contract
-    #[init]
     pub fn new(domain_separator: [u8; 32]) -> Self {
         Self { domain_separator }
     }
 
     /// Calculate order hash
     pub fn hash_order(&self, order: Order) -> [u8; 32] {
-        hash_order(&order, &self.domain_separator)
+        self.compute_order_hash(&order)
     }
 
     /// Get receiver for an order
     pub fn get_receiver(&self, order: Order) -> AccountId {
-        get_receiver(&order)
+        if order.receiver.as_str() == "0x0000000000000000000000000000000000000000" {
+            order.maker
+        } else {
+            order.receiver
+        }
     }
 
     /// Calculate making amount based on taking amount
-    #[handle_result]
     pub fn calculate_making_amount(
         &self,
         order: Order,
@@ -50,7 +48,7 @@ impl OrderLib {
         remaining_making_amount: u128,
         order_hash: [u8; 32],
     ) -> Result<u128, LimitOrderError> {
-        calculate_making_amount(
+        self.compute_making_amount(
             &order,
             &extension,
             requested_taking_amount,
@@ -60,7 +58,6 @@ impl OrderLib {
     }
 
     /// Calculate taking amount based on making amount
-    #[handle_result]
     pub fn calculate_taking_amount(
         &self,
         order: Order,
@@ -69,7 +66,7 @@ impl OrderLib {
         remaining_making_amount: u128,
         order_hash: [u8; 32],
     ) -> Result<u128, LimitOrderError> {
-        calculate_taking_amount(
+        self.compute_taking_amount(
             &order,
             &extension,
             requested_making_amount,
@@ -79,17 +76,15 @@ impl OrderLib {
     }
 
     /// Validate extension for an order
-    #[handle_result]
     pub fn validate_extension(
         &self,
         order: Order,
         extension: Extension,
     ) -> Result<bool, LimitOrderError> {
-        validate_extension(&order, &extension)
+        self.validate_order_extension(&order, &extension)
     }
 
     /// Process order execution
-    #[handle_result]
     pub fn process_order(
         &mut self,
         order: Order,
@@ -170,6 +165,129 @@ impl OrderLib {
     /// Get domain separator
     pub fn get_domain_separator(&self) -> [u8; 32] {
         self.domain_separator
+    }
+
+    // Internal helper functions
+    fn compute_order_hash(&self, order: &Order) -> [u8; 32] {
+        let mut data = Vec::new();
+        data.extend_from_slice(&self.domain_separator);
+        data.extend_from_slice(&order.salt.to_le_bytes());
+        data.extend_from_slice(order.maker.as_bytes());
+        data.extend_from_slice(order.receiver.as_bytes());
+        data.extend_from_slice(order.maker_asset.as_bytes());
+        data.extend_from_slice(order.taker_asset.as_bytes());
+        data.extend_from_slice(&order.making_amount.to_le_bytes());
+        data.extend_from_slice(&order.taking_amount.to_le_bytes());
+
+        // Hash maker traits
+        let traits_hash = self.hash_maker_traits(&order.maker_traits);
+        data.extend_from_slice(&traits_hash);
+
+        near_sdk::env::keccak256(&data).try_into().unwrap()
+    }
+
+    fn hash_maker_traits(&self, traits: &crate::types::MakerTraits) -> [u8; 32] {
+        let mut data = Vec::new();
+        data.extend_from_slice(&(traits.use_bit_invalidator as u8).to_le_bytes());
+        data.extend_from_slice(&(traits.use_epoch_manager as u8).to_le_bytes());
+        data.extend_from_slice(&(traits.has_extension as u8).to_le_bytes());
+        data.extend_from_slice(&traits.nonce_or_epoch.to_le_bytes());
+        data.extend_from_slice(&traits.series.to_le_bytes());
+
+        near_sdk::env::keccak256(&data).try_into().unwrap()
+    }
+
+    fn compute_making_amount(
+        &self,
+        order: &Order,
+        extension: &Extension,
+        requested_taking_amount: u128,
+        _remaining_making_amount: u128,
+        _order_hash: &[u8; 32],
+    ) -> Result<u128, LimitOrderError> {
+        let making_amount_data = extension.maker_amount_data();
+
+        if making_amount_data.is_empty() {
+            // Linear proportion
+            if order.taking_amount == 0 {
+                return Err(LimitOrderError::SwapWithZeroAmount);
+            }
+            return Ok((order.making_amount * requested_taking_amount) / order.taking_amount);
+        }
+
+        // In a real implementation, we would call an external getter contract
+        // For now, return a simplified calculation
+        Ok(requested_taking_amount)
+    }
+
+    fn compute_taking_amount(
+        &self,
+        order: &Order,
+        extension: &Extension,
+        requested_making_amount: u128,
+        _remaining_making_amount: u128,
+        _order_hash: &[u8; 32],
+    ) -> Result<u128, LimitOrderError> {
+        let taking_amount_data = extension.taker_amount_data();
+
+        if taking_amount_data.is_empty() {
+            // Linear proportion
+            if order.making_amount == 0 {
+                return Err(LimitOrderError::SwapWithZeroAmount);
+            }
+            return Ok((order.taking_amount * requested_making_amount) / order.making_amount);
+        }
+
+        // In a real implementation, we would call an external getter contract
+        // For now, return a simplified calculation
+        Ok(requested_making_amount)
+    }
+
+    fn validate_order_extension(&self, order: &Order, extension: &Extension) -> Result<bool, LimitOrderError> {
+        if order.maker_traits.has_extension() {
+            if extension.maker_amount_data().is_empty()
+                && extension.taker_amount_data().is_empty()
+                && extension.predicate_data().is_empty()
+                && extension.permit_data().is_empty()
+                && extension.pre_interaction_data().is_empty()
+                && extension.post_interaction_data().is_empty()
+            {
+                return Err(LimitOrderError::MissingOrderExtension);
+            }
+
+            // Validate extension hash
+            let extension_hash = self.hash_extension(extension);
+            let order_salt_lower = order.salt & 0xFFFFFFFFFFFFFFFF;
+            let hash_lower = u64::from_le_bytes(extension_hash[0..8].try_into().unwrap());
+
+            if hash_lower != order_salt_lower {
+                return Err(LimitOrderError::InvalidExtensionHash);
+            }
+        } else {
+            if !extension.maker_amount_data().is_empty()
+                || !extension.taker_amount_data().is_empty()
+                || !extension.predicate_data().is_empty()
+                || !extension.permit_data().is_empty()
+                || !extension.pre_interaction_data().is_empty()
+                || !extension.post_interaction_data().is_empty()
+            {
+                return Err(LimitOrderError::UnexpectedOrderExtension);
+            }
+        }
+
+        Ok(true)
+    }
+
+    fn hash_extension(&self, extension: &Extension) -> [u8; 32] {
+        let mut data = Vec::new();
+        data.extend_from_slice(extension.maker_amount_data());
+        data.extend_from_slice(extension.taker_amount_data());
+        data.extend_from_slice(extension.predicate_data());
+        data.extend_from_slice(extension.permit_data());
+        data.extend_from_slice(extension.pre_interaction_data());
+        data.extend_from_slice(extension.post_interaction_data());
+
+        near_sdk::env::keccak256(&data).try_into().unwrap()
     }
 }
 
