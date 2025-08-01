@@ -3,7 +3,9 @@ use near_sdk::{
     env, log, near, AccountId, Gas, Promise,
     serde::{Deserialize, Serialize},
     ext_contract,
+    json_types::U128,
 };
+use near_sdk::ONE_NEAR;
 use crate::types::{Order, Extension, LimitOrderError};
 use crate::utils::{hash_order, calculate_making_amount, calculate_taking_amount, validate_extension, get_receiver};
 
@@ -43,6 +45,7 @@ impl OrderLib {
     }
 
     /// Calculate making amount based on taking amount
+    #[handle_result]
     pub fn calculate_making_amount(
         &self,
         order: Order,
@@ -61,6 +64,7 @@ impl OrderLib {
     }
 
     /// Calculate taking amount based on making amount
+    #[handle_result]
     pub fn calculate_taking_amount(
         &self,
         order: Order,
@@ -79,11 +83,13 @@ impl OrderLib {
     }
 
     /// Validate extension for an order
+    #[handle_result]
     pub fn validate_extension(&self, order: Order, extension: Extension) -> Result<bool, LimitOrderError> {
         validate_extension(&order, &extension)
     }
 
     /// Process order execution
+    #[handle_result]
     pub fn process_order(
         &mut self,
         order: Order,
@@ -145,13 +151,13 @@ impl OrderLib {
     ) -> Result<(), LimitOrderError> {
         if token.as_str() == "near" {
             // Native NEAR transfer
-            Promise::new(to.clone()).transfer(amount);
+            Promise::new(to.clone()).transfer(amount * ONE_NEAR);
         } else {
             // FT transfer via cross-contract call
             ext_ft::ext(token.clone())
-                .with_attached_deposit(1)
-                .with_gas(GAS_FOR_FT_TRANSFER)
-                .ft_transfer_from(from.clone(), to.clone(), amount, None);
+                .with_attached_deposit(ONE_NEAR)
+                .with_static_gas(GAS_FOR_FT_TRANSFER)
+                .ft_transfer_from(from.clone(), to.clone(), U128(amount), None);
         }
         Ok(())
     }
@@ -165,7 +171,7 @@ impl OrderLib {
 // External FT contract interface
 #[ext_contract(ext_ft)]
 pub trait FungibleToken {
-    fn ft_transfer_from(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: u128, memo: Option<String>);
+    fn ft_transfer_from(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, memo: Option<String>);
 }
 
 #[cfg(test)]

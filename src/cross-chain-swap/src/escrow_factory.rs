@@ -1,36 +1,31 @@
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, log, near, AccountId, Balance, Gas, Promise,
+    env, log, near, AccountId, Gas, Promise,
     serde::{Deserialize, Serialize},
     collections::UnorderedMap,
 };
-use crate::types::{
-    Immutables, DstImmutablesComplement, ExtraDataArgs, ValidationData, EscrowError, TimelockStage
-};
+use crate::types::{Immutables, DstImmutablesComplement, ExtraDataArgs, ValidationData, EscrowError, TimelockStage};
 use crate::utils::{hash_immutables, validate_partial_fill};
 
-// Gas for cross-contract calls
-const GAS_FOR_ESCROW_CREATION: Gas = Gas(50_000_000_000_000);
+const GAS_FOR_ESCROW_CREATION: Gas = Gas::from_tgas(50);
 
-/// Escrow Factory contract for cross-chain atomic swap
 #[near(contract_state)]
-#[derive(BorshSerialize, BorshDeserialize)]
 pub struct EscrowFactory {
     pub escrow_src_implementation: AccountId,
     pub escrow_dst_implementation: AccountId,
     pub proxy_src_bytecode_hash: [u8; 32],
     pub proxy_dst_bytecode_hash: [u8; 32],
-    pub last_validated: UnorderedMap<[u8; 32], ValidationData>,
+    pub last_validated: UnorderedMap<AccountId, u64>,
 }
 
 impl Default for EscrowFactory {
     fn default() -> Self {
         Self {
-            escrow_src_implementation: AccountId::new_unchecked("".to_string()),
-            escrow_dst_implementation: AccountId::new_unchecked("".to_string()),
+            escrow_src_implementation: AccountId::new_unvalidated("".to_string()),
+            escrow_dst_implementation: AccountId::new_unvalidated("".to_string()),
             proxy_src_bytecode_hash: [0u8; 32],
             proxy_dst_bytecode_hash: [0u8; 32],
-            last_validated: UnorderedMap::new(b"last_validated"),
+            last_validated: UnorderedMap::new(b"l"),
         }
     }
 }
@@ -55,7 +50,8 @@ impl EscrowFactory {
     }
 
     /// Create destination escrow
-    pub fn create_dst_escrow(&mut self, dst_immutables: Immutables, src_cancellation_timestamp: u64) {
+    #[handle_result]
+    pub fn create_dst_escrow(&mut self, dst_immutables: Immutables, src_cancellation_timestamp: u64) -> Result<(), EscrowError> {
         let token = dst_immutables.token.clone();
         let native_amount = if token.as_str() == "near" {
             dst_immutables.safety_deposit + dst_immutables.amount
@@ -88,9 +84,11 @@ impl EscrowFactory {
 
         log!("Dst escrow created: escrow={}, hashlock={:?}, taker={}", 
              escrow, immutables.hashlock, immutables.taker);
+        Ok(())
     }
 
     /// Post interaction for source escrow creation
+    #[handle_result]
     pub fn post_interaction(
         &mut self,
         order_hash: [u8; 32],
@@ -98,15 +96,15 @@ impl EscrowFactory {
         maker: AccountId,
         taker: AccountId,
         token: AccountId,
-        amount: Balance,
-        safety_deposit: Balance,
+        amount: u128,
+        safety_deposit: u128,
         timelocks: crate::types::Timelocks,
         dst_token: AccountId,
         dst_chain_id: u64,
-        dst_amount: Balance,
-        dst_safety_deposit: Balance,
+        dst_amount: u128,
+        dst_safety_deposit: u128,
         dst_maker: AccountId,
-    ) {
+    ) -> Result<(), EscrowError> {
         let immutables = Immutables {
             order_hash,
             hashlock,
@@ -136,6 +134,7 @@ impl EscrowFactory {
             // In a real implementation, we would check the escrow balance
             log!("Escrow balance validation would happen here");
         }
+        Ok(())
     }
 
     /// Get address of source escrow
@@ -143,7 +142,7 @@ impl EscrowFactory {
         let salt = hash_immutables(&immutables);
         // In a real implementation, we would compute the deterministic address
         // For now, return a placeholder
-        AccountId::new_unchecked(format!("escrow_src_{:?}", salt))
+        AccountId::new_unvalidated(format!("escrow_src_{:?}", salt))
     }
 
     /// Get address of destination escrow
@@ -151,19 +150,20 @@ impl EscrowFactory {
         let salt = hash_immutables(&immutables);
         // In a real implementation, we would compute the deterministic address
         // For now, return a placeholder
-        AccountId::new_unchecked(format!("escrow_dst_{:?}", salt))
+        AccountId::new_unvalidated(format!("escrow_dst_{:?}", salt))
     }
 
     /// Deploy escrow contract
-    fn deploy_escrow(&self, salt: [u8; 32], value: Balance, implementation: AccountId) -> AccountId {
+    fn deploy_escrow(&self, salt: [u8; 32], value: u128, implementation: AccountId) -> AccountId {
         // In a real implementation, we would use NEAR's contract deployment mechanism
         // For now, return a deterministic address based on salt
         let mut address_bytes = [0u8; 32];
         address_bytes.copy_from_slice(&salt);
-        AccountId::new_unchecked(format!("escrow_{:?}", address_bytes))
+        AccountId::new_unvalidated(format!("escrow_{:?}", address_bytes))
     }
 
     /// Validate partial fill for multiple secrets
+    #[handle_result]
     pub fn validate_partial_fill(
         &mut self,
         making_amount: u128,
@@ -195,7 +195,7 @@ impl EscrowFactory {
     }
 
     /// Compute validation key
-    fn compute_validation_key(&self, order_hash: [u8; 32], hashlock_info: [u8; 32]) -> [u8; 32] {
+    fn compute_validation_key(&self, order_hash: [u8; 32], hashlock_info: [u8; 32]) -> AccountId {
         let mut data = Vec::new();
         data.extend_from_slice(&order_hash);
         data.extend_from_slice(&hashlock_info);

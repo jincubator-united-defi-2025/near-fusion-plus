@@ -1,14 +1,14 @@
+use super::order_mixin::OrderMixin;
+use crate::types::{Extension, LimitOrderError, MakerTraits, Order};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, log, near, AccountId, Balance,
+    env, log, near,
     serde::{Deserialize, Serialize},
+    AccountId,
 };
-use crate::types::{Order, Extension, MakerTraits, LimitOrderError};
-use super::order_mixin::OrderMixin;
 
 /// Main Limit Order Protocol contract
 #[near(contract_state)]
-#[derive(BorshSerialize, BorshDeserialize)]
 pub struct LimitOrderProtocol {
     pub order_mixin: OrderMixin,
     pub owner: AccountId,
@@ -18,7 +18,7 @@ impl Default for LimitOrderProtocol {
     fn default() -> Self {
         Self {
             order_mixin: OrderMixin::default(),
-            owner: AccountId::new_unchecked("".to_string()),
+            owner: AccountId::new_unvalidated("".to_string()),
         }
     }
 }
@@ -63,12 +63,18 @@ impl LimitOrderProtocol {
 
     /// Get remaining invalidator for order
     pub fn remaining_invalidator_for_order(&self, maker: AccountId, order_hash: [u8; 32]) -> u128 {
-        self.order_mixin.remaining_invalidator_for_order(maker, order_hash)
+        self.order_mixin
+            .remaining_invalidator_for_order(maker, order_hash)
     }
 
     /// Get raw remaining invalidator for order
-    pub fn raw_remaining_invalidator_for_order(&self, maker: AccountId, order_hash: [u8; 32]) -> u128 {
-        self.order_mixin.raw_remaining_invalidator_for_order(maker, order_hash)
+    pub fn raw_remaining_invalidator_for_order(
+        &self,
+        maker: AccountId,
+        order_hash: [u8; 32],
+    ) -> u128 {
+        self.order_mixin
+            .raw_remaining_invalidator_for_order(maker, order_hash)
     }
 
     /// Simulate order execution
@@ -87,6 +93,7 @@ impl LimitOrderProtocol {
     }
 
     /// Fill order
+    #[handle_result]
     pub fn fill_order(
         &mut self,
         order: Order,
@@ -95,7 +102,8 @@ impl LimitOrderProtocol {
         taker: AccountId,
         taking_amount: u128,
     ) -> Result<u128, LimitOrderError> {
-        self.order_mixin.fill_order(order, extension, signature, taker, taking_amount)
+        self.order_mixin
+            .fill_order(order, extension, signature, taker, taking_amount)
     }
 
     /// Get owner
@@ -119,6 +127,7 @@ impl LimitOrderProtocol {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use near_sdk::json_types::U128;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::{testing_env, AccountId};
 
@@ -138,8 +147,8 @@ mod tests {
             receiver: accounts(2),
             maker_asset: accounts(3),
             taker_asset: accounts(4),
-            making_amount: 1000,
-            taking_amount: 500,
+            making_amount: U128(1000),
+            taking_amount: U128(500),
             maker_traits: MakerTraits {
                 use_bit_invalidator: false,
                 use_epoch_manager: false,
@@ -163,11 +172,11 @@ mod tests {
     fn test_new() {
         let context = get_context(accounts(1));
         testing_env!(context.build());
-        
+
         let domain_separator = [1u8; 32];
         let weth = accounts(2);
         let contract = LimitOrderProtocol::new(domain_separator, weth.clone());
-        
+
         assert_eq!(contract.domain_separator(), domain_separator);
         assert_eq!(contract.get_weth(), weth);
         assert_eq!(contract.get_owner(), accounts(1));
@@ -178,12 +187,12 @@ mod tests {
     fn test_pause_unpause() {
         let context = get_context(accounts(1));
         testing_env!(context.build());
-        
+
         let mut contract = LimitOrderProtocol::new([1u8; 32], accounts(2));
-        
+
         contract.pause();
         assert!(contract.is_paused());
-        
+
         contract.unpause();
         assert!(!contract.is_paused());
     }
@@ -192,7 +201,7 @@ mod tests {
     fn test_cancel_order() {
         let context = get_context(accounts(1));
         testing_env!(context.build());
-        
+
         let mut contract = LimitOrderProtocol::new([1u8; 32], accounts(2));
         let maker_traits = MakerTraits {
             use_bit_invalidator: false,
@@ -202,9 +211,9 @@ mod tests {
             series: 0,
         };
         let order_hash = [1u8; 32];
-        
+
         contract.cancel_order(maker_traits, order_hash);
-        
+
         // Check that order is invalidated
         let remaining = contract.remaining_invalidator_for_order(accounts(1), order_hash);
         assert_eq!(remaining, 0);
@@ -214,11 +223,11 @@ mod tests {
     fn test_bit_invalidator() {
         let context = get_context(accounts(1));
         testing_env!(context.build());
-        
+
         let contract = LimitOrderProtocol::new([1u8; 32], accounts(2));
-        
+
         // Test bit invalidator for non-existent maker
         let result = contract.bit_invalidator_for_order(accounts(3), 0);
         assert!(!result);
     }
-} 
+}

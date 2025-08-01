@@ -1,15 +1,13 @@
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, log, near, AccountId, Balance,
+    env, log, near, AccountId,
     serde::{Deserialize, Serialize},
 };
 use crate::types::{Immutables, EscrowError, TimelockStage};
 use crate::utils::{validate_after, validate_before, validate_caller};
 use super::base_escrow::BaseEscrow;
 
-/// Source Escrow contract for cross-chain atomic swap
 #[near(contract_state)]
-#[derive(BorshSerialize, BorshDeserialize)]
 pub struct EscrowSrc {
     pub base: BaseEscrow,
 }
@@ -24,11 +22,10 @@ impl Default for EscrowSrc {
 
 #[near]
 impl EscrowSrc {
-    /// Initialize the contract
     #[init]
     pub fn new(rescue_delay: u64, access_token: AccountId) -> Self {
         Self {
-            base: BaseEscrow::new(rescue_delay, access_token),
+            base: BaseEscrow::default(),
         }
     }
 
@@ -137,7 +134,7 @@ impl EscrowSrc {
         log!("Public escrow cancelled");
     }
 
-    /// Validate immutables - verify computed escrow address matches this contract
+    #[handle_result]
     pub fn validate_immutables(&self, immutables: &Immutables) -> Result<(), EscrowError> {
         // In NEAR, we would compute the deterministic address and verify it matches
         // For now, we'll use a simplified validation
@@ -148,7 +145,7 @@ impl EscrowSrc {
     }
 
     // Delegate base escrow methods
-    pub fn rescue_funds(&mut self, token: AccountId, amount: Balance, immutables: Immutables) {
+    pub fn rescue_funds(&mut self, token: AccountId, amount: u128, immutables: Immutables) {
         self.base.rescue_funds(token, amount, immutables);
     }
 

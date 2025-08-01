@@ -1,8 +1,5 @@
-use near_sdk::{
-    env,
-    hash::CryptoHash,
-};
-use crate::types::{Order, Extension, LimitOrderError};
+use crate::types::{Extension, LimitOrderError, Order};
+use near_sdk::env;
 
 /// Compute hash of an order
 pub fn hash_order(order: &Order, domain_separator: &[u8; 32]) -> [u8; 32] {
@@ -15,11 +12,11 @@ pub fn hash_order(order: &Order, domain_separator: &[u8; 32]) -> [u8; 32] {
     data.extend_from_slice(order.taker_asset.as_bytes());
     data.extend_from_slice(&order.making_amount.0.to_le_bytes());
     data.extend_from_slice(&order.taking_amount.0.to_le_bytes());
-    
+
     // Hash maker traits
     let traits_hash = hash_maker_traits(&order.maker_traits);
     data.extend_from_slice(&traits_hash);
-    
+
     near_sdk::env::keccak256(&data).try_into().unwrap()
 }
 
@@ -31,7 +28,7 @@ pub fn hash_maker_traits(traits: &crate::types::MakerTraits) -> [u8; 32] {
     data.extend_from_slice(&(traits.has_extension as u8).to_le_bytes());
     data.extend_from_slice(&traits.nonce_or_epoch.to_le_bytes());
     data.extend_from_slice(&traits.series.to_le_bytes());
-    
+
     near_sdk::env::keccak256(&data).try_into().unwrap()
 }
 
@@ -40,11 +37,11 @@ pub fn calculate_making_amount(
     order: &Order,
     extension: &Extension,
     requested_taking_amount: u128,
-    remaining_making_amount: u128,
-    order_hash: &[u8; 32],
+    _remaining_making_amount: u128,
+    _order_hash: &[u8; 32],
 ) -> Result<u128, LimitOrderError> {
     let making_amount_data = extension.making_amount_data();
-    
+
     if making_amount_data.is_empty() {
         // Linear proportion
         if order.taking_amount.0 == 0 {
@@ -52,7 +49,7 @@ pub fn calculate_making_amount(
         }
         return Ok((order.making_amount.0 * requested_taking_amount) / order.taking_amount.0);
     }
-    
+
     // In a real implementation, we would call an external getter contract
     // For now, return a simplified calculation
     Ok(requested_taking_amount)
@@ -63,11 +60,11 @@ pub fn calculate_taking_amount(
     order: &Order,
     extension: &Extension,
     requested_making_amount: u128,
-    remaining_making_amount: u128,
-    order_hash: &[u8; 32],
+    _remaining_making_amount: u128,
+    _order_hash: &[u8; 32],
 ) -> Result<u128, LimitOrderError> {
     let taking_amount_data = extension.taking_amount_data();
-    
+
     if taking_amount_data.is_empty() {
         // Linear proportion
         if order.making_amount.0 == 0 {
@@ -75,7 +72,7 @@ pub fn calculate_taking_amount(
         }
         return Ok((order.taking_amount.0 * requested_making_amount) / order.making_amount.0);
     }
-    
+
     // In a real implementation, we would call an external getter contract
     // For now, return a simplified calculation
     Ok(requested_making_amount)
@@ -84,30 +81,32 @@ pub fn calculate_taking_amount(
 /// Validate extension for an order
 pub fn validate_extension(order: &Order, extension: &Extension) -> Result<bool, LimitOrderError> {
     if order.maker_traits.has_extension() {
-        if extension.making_amount_data().is_empty() && 
-           extension.taking_amount_data().is_empty() && 
-           extension.predicate_data().is_empty() && 
-           extension.interaction_data().is_empty() {
+        if extension.making_amount_data().is_empty()
+            && extension.taking_amount_data().is_empty()
+            && extension.predicate_data().is_empty()
+            && extension.interaction_data().is_empty()
+        {
             return Err(LimitOrderError::MissingOrderExtension);
         }
-        
+
         // Validate extension hash
         let extension_hash = hash_extension(extension);
         let order_salt_lower = order.salt & 0xFFFFFFFFFFFFFFFF;
         let hash_lower = u64::from_le_bytes(extension_hash[0..8].try_into().unwrap());
-        
+
         if hash_lower != order_salt_lower {
             return Err(LimitOrderError::InvalidExtensionHash);
         }
     } else {
-        if !extension.making_amount_data().is_empty() || 
-           !extension.taking_amount_data().is_empty() || 
-           !extension.predicate_data().is_empty() || 
-           !extension.interaction_data().is_empty() {
+        if !extension.making_amount_data().is_empty()
+            || !extension.taking_amount_data().is_empty()
+            || !extension.predicate_data().is_empty()
+            || !extension.interaction_data().is_empty()
+        {
             return Err(LimitOrderError::UnexpectedOrderExtension);
         }
     }
-    
+
     Ok(true)
 }
 
@@ -118,7 +117,7 @@ pub fn hash_extension(extension: &Extension) -> [u8; 32] {
     data.extend_from_slice(extension.taking_amount_data());
     data.extend_from_slice(extension.predicate_data());
     data.extend_from_slice(extension.interaction_data());
-    
+
     near_sdk::env::keccak256(&data).try_into().unwrap()
 }
 
@@ -155,4 +154,4 @@ pub fn validate_order_amounts(order: &Order) -> Result<bool, LimitOrderError> {
         return Err(LimitOrderError::SwapWithZeroAmount);
     }
     Ok(true)
-} 
+}

@@ -1,7 +1,7 @@
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
-    AccountId, Timestamp,
+    AccountId,
 };
 use near_sdk::json_types::U128;
 
@@ -87,7 +87,7 @@ impl TakerTraits {
 }
 
 /// Bit invalidator data
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, Default)]
 pub struct BitInvalidatorData {
     pub slots: Vec<u64>,
 }
@@ -108,7 +108,7 @@ impl BitInvalidatorData {
 }
 
 /// Remaining invalidator for order tracking
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, Default)]
 pub struct RemainingInvalidator {
     pub remaining: U128,
 }

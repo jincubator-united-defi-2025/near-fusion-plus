@@ -1,13 +1,13 @@
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, ext_contract, log, near, AccountId, Balance, Gas, Promise, PromiseResult,
+    env, ext_contract, log, near, AccountId, Gas, Promise, PromiseResult,
     serde::{Deserialize, Serialize},
 };
 use crate::types::{Immutables, EscrowError, TimelockStage};
 use crate::utils::{hash_secret, validate_after, validate_before, validate_caller};
 
 // Gas for cross-contract calls
-const GAS_FOR_FT_TRANSFER: Gas = Gas(10_000_000_000_000);
+const GAS_FOR_FT_TRANSFER: Gas = Gas::from_tgas(10);
 
 /// Base abstract Escrow contract for cross-chain atomic swap
 #[near(contract_state)]
@@ -22,8 +22,8 @@ impl Default for BaseEscrow {
     fn default() -> Self {
         Self {
             rescue_delay: 0,
-            access_token: AccountId::new_unchecked("".to_string()),
-            factory: AccountId::new_unchecked("".to_string()),
+            access_token: AccountId::new_unvalidated("".to_string()),
+            factory: AccountId::new_unvalidated("".to_string()),
         }
     }
 }
@@ -42,7 +42,8 @@ impl BaseEscrow {
 
     /// Rescue funds from the escrow
     /// Funds can only be rescued by the taker after the rescue delay
-    pub fn rescue_funds(&mut self, token: AccountId, amount: Balance, immutables: Immutables) {
+    #[handle_result]
+    pub fn rescue_funds(&mut self, token: AccountId, amount: u128, immutables: Immutables) -> PromiseResult {
         // Validate caller is taker
         validate_caller(&immutables.taker).expect("Invalid caller");
         
@@ -57,6 +58,7 @@ impl BaseEscrow {
         self.uni_transfer(&token, &immutables.taker, amount);
         
         log!("Funds rescued: token={}, amount={}", token, amount);
+        Ok(())
     }
 
     /// Get rescue delay
@@ -70,6 +72,7 @@ impl BaseEscrow {
     }
 
     /// Validate that caller has access token
+    #[handle_result]
     pub fn validate_access_token(&self) -> Result<(), EscrowError> {
         // In NEAR, we would need to check if the caller has the access token
         // This is a simplified implementation
@@ -77,12 +80,14 @@ impl BaseEscrow {
     }
 
     /// Validate immutables - to be implemented by derived contracts
+    #[handle_result]
     pub fn validate_immutables(&self, _immutables: &Immutables) -> Result<(), EscrowError> {
         // Default implementation - derived contracts should override
         Ok(())
     }
 
     /// Validate secret matches hashlock
+    #[handle_result]
     pub fn validate_secret(&self, secret: &[u8; 32], immutables: &Immutables) -> Result<(), EscrowError> {
         let secret_hash = hash_secret(secret);
         if secret_hash != immutables.hashlock {
@@ -92,7 +97,7 @@ impl BaseEscrow {
     }
 
     /// Transfer tokens (ERC20 or native)
-    pub fn uni_transfer(&self, token: &AccountId, to: &AccountId, amount: Balance) {
+    pub fn uni_transfer(&self, token: &AccountId, to: &AccountId, amount: u128) {
         if token.as_str() == "near" {
             // Native NEAR transfer
             Promise::new(to.clone()).transfer(amount);
@@ -106,7 +111,7 @@ impl BaseEscrow {
     }
 
     /// Transfer native NEAR
-    pub fn near_transfer(&self, to: &AccountId, amount: Balance) {
+    pub fn near_transfer(&self, to: &AccountId, amount: u128) {
         Promise::new(to.clone()).transfer(amount);
     }
 }
@@ -114,7 +119,7 @@ impl BaseEscrow {
 // External FT contract interface
 #[ext_contract(ext_ft)]
 pub trait FungibleToken {
-    fn ft_transfer(&mut self, receiver_id: AccountId, amount: Balance, memo: Option<String>);
+    fn ft_transfer(&mut self, receiver_id: AccountId, amount: u128, memo: Option<String>);
 }
 
 #[cfg(test)]

@@ -1,15 +1,13 @@
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, log, near, AccountId, Balance,
+    env, log, near, AccountId,
     serde::{Deserialize, Serialize},
 };
 use crate::types::{Immutables, EscrowError, TimelockStage};
 use crate::utils::{validate_after, validate_before, validate_caller};
 use super::base_escrow::BaseEscrow;
 
-/// Destination Escrow contract for cross-chain atomic swap
 #[near(contract_state)]
-#[derive(BorshSerialize, BorshDeserialize)]
 pub struct EscrowDst {
     pub base: BaseEscrow,
 }
@@ -24,17 +22,17 @@ impl Default for EscrowDst {
 
 #[near]
 impl EscrowDst {
-    /// Initialize the contract
     #[init]
     pub fn new(rescue_delay: u64, access_token: AccountId) -> Self {
         Self {
-            base: BaseEscrow::new(rescue_delay, access_token),
+            base: BaseEscrow::default(),
         }
     }
 
     /// Withdraw funds with secret
     /// Only taker can withdraw during withdrawal period
-    pub fn withdraw(&mut self, secret: [u8; 32], immutables: Immutables) {
+    #[handle_result]
+    pub fn withdraw(&mut self, secret: [u8; 32], immutables: Immutables) -> Result<(), EscrowError> {
         // Validate caller is taker
         validate_caller(&immutables.taker).expect("Invalid caller");
         
@@ -54,10 +52,12 @@ impl EscrowDst {
         self.base.near_transfer(&env::predecessor_account_id(), immutables.safety_deposit);
         
         log!("Escrow withdrawal: secret={:?}", secret);
+        Ok(())
     }
 
     /// Public withdrawal - anyone with access token can withdraw
-    pub fn public_withdraw(&mut self, secret: [u8; 32], immutables: Immutables) {
+    #[handle_result]
+    pub fn public_withdraw(&mut self, secret: [u8; 32], immutables: Immutables) -> Result<(), EscrowError> {
         // Validate caller has access token
         self.base.validate_access_token().expect("No access token");
         
@@ -77,10 +77,12 @@ impl EscrowDst {
         self.base.near_transfer(&env::predecessor_account_id(), immutables.safety_deposit);
         
         log!("Public escrow withdrawal: secret={:?}", secret);
+        Ok(())
     }
 
     /// Cancel escrow - only taker can cancel during cancellation period
-    pub fn cancel(&mut self, immutables: Immutables) {
+    #[handle_result]
+    pub fn cancel(&mut self, immutables: Immutables) -> Result<(), EscrowError> {
         // Validate caller is taker
         validate_caller(&immutables.taker).expect("Invalid caller");
         
@@ -96,9 +98,11 @@ impl EscrowDst {
         self.base.near_transfer(&env::predecessor_account_id(), immutables.safety_deposit);
         
         log!("Escrow cancelled");
+        Ok(())
     }
 
     /// Validate immutables - verify computed escrow address matches this contract
+    #[handle_result]
     pub fn validate_immutables(&self, immutables: &Immutables) -> Result<(), EscrowError> {
         // In NEAR, we would compute the deterministic address and verify it matches
         // For now, we'll use a simplified validation
@@ -109,16 +113,20 @@ impl EscrowDst {
     }
 
     // Delegate base escrow methods
-    pub fn rescue_funds(&mut self, token: AccountId, amount: Balance, immutables: Immutables) {
+    #[handle_result]
+    pub fn rescue_funds(&mut self, token: AccountId, amount: u128, immutables: Immutables) -> Result<(), EscrowError> {
         self.base.rescue_funds(token, amount, immutables);
+        Ok(())
     }
 
-    pub fn get_rescue_delay(&self) -> u64 {
-        self.base.get_rescue_delay()
+    #[handle_result]
+    pub fn get_rescue_delay(&self) -> Result<u64, EscrowError> {
+        Ok(self.base.get_rescue_delay())
     }
 
-    pub fn get_factory(&self) -> AccountId {
-        self.base.get_factory()
+    #[handle_result]
+    pub fn get_factory(&self) -> Result<AccountId, EscrowError> {
+        Ok(self.base.get_factory())
     }
 }
 
@@ -169,8 +177,8 @@ mod tests {
         
         let contract = EscrowDst::new(rescue_delay, access_token.clone());
         
-        assert_eq!(contract.get_rescue_delay(), rescue_delay);
-        assert_eq!(contract.get_factory(), accounts(1));
+        assert_eq!(contract.get_rescue_delay().unwrap(), rescue_delay);
+        assert_eq!(contract.get_factory().unwrap(), accounts(1));
     }
 
     #[test]

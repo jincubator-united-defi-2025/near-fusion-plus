@@ -4,8 +4,10 @@ use near_sdk::{
     serde::{Deserialize, Serialize},
     collections::UnorderedMap,
     ext_contract,
+    json_types::U128,
 };
-use crate::types::{Order, Extension, MakerTraits, TakerTraits, BitInvalidatorData, RemainingInvalidator, LimitOrderError};
+use near_sdk::ONE_NEAR;
+use crate::types::{Order, Extension, MakerTraits, BitInvalidatorData, RemainingInvalidator, LimitOrderError};
 use crate::utils::{hash_order, validate_signature, is_order_expired, validate_order_amounts};
 
 // Gas for cross-contract calls
@@ -26,8 +28,8 @@ impl Default for OrderMixin {
         Self {
             domain_separator: [0u8; 32],
             weth: AccountId::new_unvalidated("".to_string()),
-            bit_invalidator: UnorderedMap::new(b"bit_invalidator"),
-            remaining_invalidator: UnorderedMap::new(b"remaining_invalidator"),
+            bit_invalidator: UnorderedMap::new(b"b"),
+            remaining_invalidator: UnorderedMap::new(b"r"),
             paused: false,
         }
     }
@@ -41,8 +43,8 @@ impl OrderMixin {
         Self {
             domain_separator,
             weth,
-            bit_invalidator: UnorderedMap::new(b"bit_invalidator"),
-            remaining_invalidator: UnorderedMap::new(b"remaining_invalidator"),
+            bit_invalidator: UnorderedMap::new(b"b"),
+            remaining_invalidator: UnorderedMap::new(b"r"),
             paused: false,
         }
     }
@@ -109,6 +111,7 @@ impl OrderMixin {
     }
 
     /// Fill order
+    #[handle_result]
     pub fn fill_order(
         &mut self,
         order: Order,
@@ -178,8 +181,8 @@ impl OrderMixin {
         order: &Order,
         extension: &Extension,
         requested_taking_amount: u128,
-        remaining_making_amount: u128,
-        order_hash: &[u8; 32],
+        _remaining_making_amount: u128,
+        _order_hash: &[u8; 32],
     ) -> Result<u128, LimitOrderError> {
         if extension.making_amount_data().is_empty() {
             // Linear proportion
@@ -220,13 +223,13 @@ impl OrderMixin {
     ) -> Result<(), LimitOrderError> {
         if token.as_str() == "near" {
             // Native NEAR transfer
-            Promise::new(to.clone()).transfer(amount);
+            Promise::new(to.clone()).transfer(amount * ONE_NEAR);
         } else {
             // FT transfer via cross-contract call
             ext_ft::ext(token.clone())
-                .with_attached_deposit(1)
-                .with_gas(GAS_FOR_FT_TRANSFER)
-                .ft_transfer_from(from.clone(), to.clone(), amount, None);
+                .with_attached_deposit(ONE_NEAR)
+                .with_static_gas(GAS_FOR_FT_TRANSFER)
+                .ft_transfer_from(from.clone(), to.clone(), U128(amount), None);
         }
         Ok(())
     }
@@ -279,7 +282,7 @@ impl OrderMixin {
 // External FT contract interface
 #[ext_contract(ext_ft)]
 pub trait FungibleToken {
-    fn ft_transfer_from(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: u128, memo: Option<String>);
+    fn ft_transfer_from(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, memo: Option<String>);
 }
 
 #[cfg(test)]
