@@ -1,7 +1,7 @@
 // Find all our documentation at https://docs.near.org
 use super::order_mixin::OrderMixin;
 use crate::types::{Extension, LimitOrderError, MakerTraits, Order};
-use near_sdk::{env, near, AccountId, NearToken};
+use near_sdk::{env, near, AccountId};
 
 /// Main Limit Order Protocol contract
 #[near(contract_state)]
@@ -114,7 +114,11 @@ impl LimitOrderProtocol {
 
     /// Only owner modifier
     fn only_owner(&self) {
-        assert_eq!(env::predecessor_account_id(), self.owner, "Only owner can call this");
+        assert_eq!(
+            env::predecessor_account_id(),
+            self.owner,
+            "Only owner can call this"
+        );
     }
 }
 
@@ -129,9 +133,11 @@ mod tests {
     use near_sdk::testing_env;
 
     fn get_context(predecessor_account_id: AccountId) -> VMContextBuilder {
-        VMContextBuilder::new()
+        let mut builder = VMContextBuilder::new();
+        builder
             .predecessor_account_id(predecessor_account_id)
-            .attached_deposit(NearToken::from_yoctonear(1))
+            .attached_deposit(near_sdk::NearToken::from_yoctonear(1));
+        builder
     }
 
     fn create_test_order() -> Order {

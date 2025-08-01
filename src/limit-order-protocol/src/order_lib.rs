@@ -1,10 +1,9 @@
 // Find all our documentation at https://docs.near.org
-use near_sdk::{
-    log, near, AccountId, Gas, Promise, NearToken,
-    ext_contract,
+use crate::types::{Extension, LimitOrderError, Order};
+use crate::utils::{
+    calculate_making_amount, calculate_taking_amount, get_receiver, hash_order, validate_extension,
 };
-use crate::types::{Order, Extension, LimitOrderError};
-use crate::utils::{hash_order, calculate_making_amount, calculate_taking_amount, validate_extension, get_receiver};
+use near_sdk::{ext_contract, log, near, AccountId, Gas, NearToken, Promise};
 
 // Gas for cross-contract calls
 const GAS_FOR_FT_TRANSFER: Gas = Gas::from_tgas(10);
@@ -81,7 +80,11 @@ impl OrderLib {
 
     /// Validate extension for an order
     #[handle_result]
-    pub fn validate_extension(&self, order: Order, extension: Extension) -> Result<bool, LimitOrderError> {
+    pub fn validate_extension(
+        &self,
+        order: Order,
+        extension: Extension,
+    ) -> Result<bool, LimitOrderError> {
         validate_extension(&order, &extension)
     }
 
@@ -117,7 +120,11 @@ impl OrderLib {
         // Execute the swap
         self.execute_swap(&order, &taker, making_amount, taking_amount)?;
 
-        log!("Order processed: making_amount={}, taking_amount={}", making_amount, taking_amount);
+        log!(
+            "Order processed: making_amount={}, taking_amount={}",
+            making_amount,
+            taking_amount
+        );
 
         Ok(making_amount)
     }
@@ -132,10 +139,10 @@ impl OrderLib {
     ) -> Result<(), LimitOrderError> {
         // Transfer tokens from taker to maker
         self.transfer_tokens(&order.taker_asset, taker, &order.maker, taking_amount)?;
-        
+
         // Transfer tokens from maker to taker
         self.transfer_tokens(&order.maker_asset, &order.maker, taker, making_amount)?;
-        
+
         Ok(())
     }
 
@@ -169,7 +176,13 @@ impl OrderLib {
 // External contract trait for fungible token transfers
 #[ext_contract(ext_ft)]
 pub trait FungibleToken {
-    fn ft_transfer_from(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: u128, memo: Option<String>);
+    fn ft_transfer_from(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: u128,
+        memo: Option<String>,
+    );
 }
 
 /*
@@ -183,9 +196,11 @@ mod tests {
     use near_sdk::testing_env;
 
     fn get_context(predecessor_account_id: AccountId) -> VMContextBuilder {
-        VMContextBuilder::new()
+        let mut builder = VMContextBuilder::new();
+        builder
             .predecessor_account_id(predecessor_account_id)
-            .attached_deposit(NearToken::from_yoctonear(1))
+            .attached_deposit(NearToken::from_yoctonear(1));
+        builder
     }
 
     fn create_test_order() -> Order {
@@ -254,4 +269,4 @@ mod tests {
         let result = contract.validate_extension(order, extension);
         assert!(result.is_ok());
     }
-} 
+}

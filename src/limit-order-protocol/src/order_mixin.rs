@@ -290,9 +290,11 @@ mod tests {
     use near_sdk::testing_env;
 
     fn get_context(predecessor_account_id: AccountId) -> VMContextBuilder {
-        VMContextBuilder::new()
+        let mut builder = VMContextBuilder::new();
+        builder
             .predecessor_account_id(predecessor_account_id)
-            .attached_deposit(NearToken::from_yoctonear(1))
+            .attached_deposit(NearToken::from_yoctonear(1));
+        builder
     }
 
     fn create_test_order() -> Order {
