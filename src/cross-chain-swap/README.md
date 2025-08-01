@@ -1,148 +1,89 @@
-# Cross-Chain Swap NEAR Contracts
+# Cross-chain Swap Contracts
 
-This directory contains the NEAR Rust implementation of cross-chain atomic swap contracts, migrated from the original Solidity contracts.
+Cross-chain atomic swap contracts for NEAR, migrated from Solidity contracts.
 
-## Overview
+## How to Build Locally?
 
-The cross-chain swap system enables atomic swaps between different blockchain networks using hashlock-based escrow contracts. This implementation provides:
-
-- **BaseEscrow**: Core escrow functionality with rescue mechanisms
-- **EscrowSrc**: Source chain escrow for initiating swaps
-- **EscrowDst**: Destination chain escrow for completing swaps
-- **EscrowFactory**: Factory contract for deploying new escrow instances
-
-## Architecture
-
-### Core Components
-
-1. **BaseEscrow** (`src/base_escrow.rs`)
-
-   - Provides fundamental escrow functionality
-   - Handles token transfers and rescue operations
-   - Validates secrets and access tokens
-
-2. **EscrowSrc** (`src/escrow_src.rs`)
-
-   - Source chain escrow implementation
-   - Handles withdrawal, cancellation, and public operations
-   - Inherits from BaseEscrow
-
-3. **EscrowDst** (`src/escrow_dst.rs`)
-
-   - Destination chain escrow implementation
-   - Handles withdrawal, cancellation, and public operations
-   - Inherits from BaseEscrow
-
-4. **EscrowFactory** (`src/escrow_factory.rs`)
-   - Factory contract for deploying escrow instances
-   - Manages escrow creation and validation
-   - Handles partial fill validation
-
-### Data Structures
-
-- **Immutables**: Core swap parameters (order hash, hashlock, participants, amounts)
-- **Timelocks**: Time-based constraints for different operations
-- **TimelockStage**: Enum defining different timelock stages
-- **ValidationData**: Validation results and error information
-
-## Key Features
-
-### Atomic Swap Flow
-
-1. **Initiation**: User creates escrow on source chain with hashlock
-2. **Escrow Creation**: Factory deploys destination escrow
-3. **Secret Revelation**: Taker reveals secret to unlock funds
-4. **Completion**: Funds are transferred atomically
-
-### Security Features
-
-- **Hashlock-based**: Uses cryptographic hashlocks for atomicity
-- **Timelock Protection**: Time-based constraints prevent stuck funds
-- **Rescue Mechanisms**: Emergency withdrawal options
-- **Access Control**: Token-based access control for public operations
-
-### NEAR-Specific Adaptations
-
-- **AccountId**: Uses NEAR account IDs instead of Ethereum addresses
-- **NearToken**: Native NEAR token handling
-- **Gas Management**: NEAR gas optimization
-- **Cross-Contract Calls**: NEAR-specific contract interaction patterns
-
-## Usage
-
-### Building
+Install [`cargo-near`](https://github.com/near/cargo-near) and run:
 
 ```bash
-cargo build --target wasm32-unknown-unknown
+cargo near build
 ```
 
-### Testing
+## How to Test Locally?
 
 ```bash
 cargo test
 ```
 
-### Deployment
+## How to Deploy?
 
-The contracts can be deployed to NEAR testnet or mainnet using standard NEAR deployment tools.
+To deploy manually, install [`cargo-near`](https://github.com/near/cargo-near) and run:
 
-## Migration Notes
+```bash
+# Create a new account
+cargo near create-dev-account
 
-### From Solidity to Rust
+# Deploy the contract on it
+cargo near deploy <account-id>
+```
 
-1. **Type System**: Converted Solidity types to Rust equivalents
+## Contract Overview
 
-   - `address` → `AccountId`
-   - `uint256` → `u128`
-   - `bytes32` → `[u8; 32]`
+This project contains NEAR Rust implementations of cross-chain atomic swap contracts:
 
-2. **Error Handling**: Replaced Solidity reverts with Rust `Result<T, E>`
+### BaseEscrow Contract
 
-   - Added `#[handle_result]` attributes for proper error handling
-   - Used `Abort` for critical failures
+The foundational contract that provides common functionalities for atomic swaps:
 
-3. **State Management**: Adapted to NEAR's state management patterns
+- **Rescue Funds**: Allows recovery of funds after timelock expiration
+- **Token Transfers**: Handles both native NEAR and fungible token transfers
+- **Validation**: Validates secrets, access tokens, and immutables
+- **Timelock Management**: Manages withdrawal and cancellation timelocks
 
-   - Used `#[near(contract_state)]` for contract state
-   - Implemented proper serialization with Borsh
+### Key Features
 
-4. **Gas Optimization**: Optimized for NEAR's gas model
-   - Used `Gas::from_tgas()` for gas calculations
-   - Implemented efficient cross-contract calls
+- **Cross-chain Compatibility**: Designed for atomic swaps between different blockchains
+- **Security**: Implements hashlock-based security with timelock mechanisms
+- **Flexibility**: Supports both native NEAR and fungible token transfers
+- **Gas Optimization**: Efficient gas usage for cross-contract calls
 
-### Key Differences from Solidity Version
+### NEAR-Specific Adaptations
 
-- **Deterministic Addresses**: Simplified address computation for NEAR
-- **Token Standards**: Adapted for NEAR's fungible token standard
-- **Event System**: Replaced Solidity events with NEAR logs
-- **Access Control**: Simplified access token validation for NEAR
+- Uses NEAR's native token system and AccountId types
+- Implements NEAR's cross-contract call patterns
+- Leverages NEAR's gas management and Promise system
+- Follows NEAR's serialization standards (Borsh)
+
+## Architecture
+
+The project is structured to support multiple contracts:
+
+- `BaseEscrow`: Core escrow functionality (currently implemented)
+- `EscrowSrc`: Source chain escrow (planned)
+- `EscrowDst`: Destination chain escrow (planned)
+- `EscrowFactory`: Factory for creating escrow contracts (planned)
 
 ## Testing Status
 
-✅ **Unit Tests**: All core functionality tested and passing
-
-- BaseEscrow initialization and methods
-- EscrowSrc deployment and operations
-- EscrowDst deployment and operations
-- EscrowFactory deployment and validation
+- ✅ Unit tests for BaseEscrow contract
+- ✅ Integration tests for contract deployment and basic functionality
+- 🔄 Additional contracts implementation (in progress)
 
 ## Next Steps
 
-1. **Integration Testing**: Add comprehensive integration tests
-2. **Gas Optimization**: Further optimize gas usage
-3. **Security Audit**: Conduct thorough security review
-4. **Documentation**: Add detailed API documentation
-5. **Deployment Scripts**: Create deployment automation
+1. Implement remaining contracts (EscrowSrc, EscrowDst, EscrowFactory)
+2. Add comprehensive integration tests
+3. Implement advanced validation logic
+4. Add gas optimization features
 
-## Contributing
+## Useful Links
 
-When contributing to this project:
-
-1. Ensure all tests pass: `cargo test`
-2. Follow NEAR development best practices
-3. Add appropriate error handling
-4. Update documentation for any changes
-
-## License
-
-This project follows the same license as the original Solidity contracts.
+- [cargo-near](https://github.com/near/cargo-near) - NEAR smart contract development toolkit for Rust
+- [near CLI](https://near.cli.rs) - Interact with NEAR blockchain from command line
+- [NEAR Rust SDK Documentation](https://docs.near.org/sdk/rust/introduction)
+- [NEAR Documentation](https://docs.near.org)
+- [NEAR StackOverflow](https://stackoverflow.com/questions/tagged/nearprotocol)
+- [NEAR Discord](https://near.chat)
+- [NEAR Telegram Developers Community Group](https://t.me/neardev)
+- NEAR DevHub: [Telegram](https://t.me/neardevhub), [Twitter](https://twitter.com/neardevhub)

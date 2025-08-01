@@ -532,7 +532,6 @@ dependencies = [
 name = "cross-chain-swap"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "borsh",
  "near-sdk",
  "near-workspaces",
