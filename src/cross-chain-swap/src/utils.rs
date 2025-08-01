@@ -1,4 +1,4 @@
-use crate::types::{EscrowError, Immutables, TimelockStage, Timelocks, ValidationData};
+use crate::types::{EscrowError, Immutables, Timelocks};
 use near_sdk::env;
 
 /// Compute hash of immutables for deterministic address generation
@@ -19,7 +19,7 @@ pub fn hash_immutables(immutables: &Immutables) -> [u8; 32] {
     env::keccak256(&data).try_into().unwrap()
 }
 
-/// Hash timelocks structure
+/// Compute hash of timelocks
 pub fn hash_timelocks(timelocks: &Timelocks) -> [u8; 32] {
     let mut data = Vec::new();
     data.extend_from_slice(&timelocks.deployed_at.to_le_bytes());
@@ -50,6 +50,13 @@ pub fn validate_caller(_account: &near_sdk::AccountId) -> Result<(), EscrowError
 }
 
 /// Validate partial fill for multiple secrets
-pub fn validate_partial_fill() -> Result<(), EscrowError> {
-    Ok(())
+pub fn validate_partial_fill(
+    _making_amount: u128,
+    _remaining_making_amount: u128,
+    _order_making_amount: u128,
+    _parts_amount: u64,
+    _validated_index: u64,
+) -> Result<bool, EscrowError> {
+    // Simplified implementation - in a real contract this would validate the partial fill logic
+    Ok(true)
 }
