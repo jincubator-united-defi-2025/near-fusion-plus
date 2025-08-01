@@ -18,7 +18,7 @@ async fn test_limit_order_protocol_contract() -> Result<(), Box<dyn std::error::
     let outcome = contract
         .call("new")
         .args_json(json!({
-            "domain_separator": [1u8; 32],
+            "domain_separator": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "weth": "weth.testnet"
         }))
         .transact()
@@ -57,7 +57,7 @@ async fn test_order_mixin_contract() -> Result<(), Box<dyn std::error::Error>> {
     let outcome = contract
         .call("new")
         .args_json(json!({
-            "domain_separator": [1u8; 32],
+            "domain_separator": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "weth": "weth.testnet"
         }))
         .transact()
@@ -96,7 +96,7 @@ async fn test_order_lib_contract() -> Result<(), Box<dyn std::error::Error>> {
     let outcome = contract
         .call("new")
         .args_json(json!({
-            "domain_separator": [1u8; 32]
+            "domain_separator": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         }))
         .transact()
         .await?;

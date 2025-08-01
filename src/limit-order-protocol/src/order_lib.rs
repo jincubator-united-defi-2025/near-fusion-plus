@@ -1,11 +1,8 @@
+// Find all our documentation at https://docs.near.org
 use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, log, near, AccountId, Gas, Promise,
-    serde::{Deserialize, Serialize},
+    log, near, AccountId, Gas, Promise, NearToken,
     ext_contract,
-    json_types::U128,
 };
-use near_sdk::ONE_NEAR;
 use crate::types::{Order, Extension, LimitOrderError};
 use crate::utils::{hash_order, calculate_making_amount, calculate_taking_amount, validate_extension, get_receiver};
 
@@ -15,7 +12,7 @@ const GAS_FOR_FT_TRANSFER: Gas = Gas::from_tgas(10);
 /// Order library for processing limit orders
 #[near(contract_state)]
 pub struct OrderLib {
-    pub domain_separator: [u8; 32],
+    domain_separator: [u8; 32],
 }
 
 impl Default for OrderLib {
@@ -98,7 +95,7 @@ impl OrderLib {
         taking_amount: u128,
     ) -> Result<u128, LimitOrderError> {
         // Validate order amounts
-        if order.making_amount.0 == 0 || order.taking_amount.0 == 0 {
+        if taking_amount == 0 {
             return Err(LimitOrderError::SwapWithZeroAmount);
         }
 
@@ -108,23 +105,24 @@ impl OrderLib {
             order.clone(),
             extension.clone(),
             taking_amount,
-            order.making_amount.0,
+            order.making_amount,
             order_hash,
         )?;
 
         // Validate extension
-        self.validate_extension(order.clone(), extension)?;
+        if !self.validate_extension(order.clone(), extension)? {
+            return Err(LimitOrderError::InvalidExtension);
+        }
 
         // Execute the swap
         self.execute_swap(&order, &taker, making_amount, taking_amount)?;
 
-        log!("Order executed: maker={}, taker={}, making_amount={}, taking_amount={}", 
-             order.maker, taker, making_amount, taking_amount);
+        log!("Order processed: making_amount={}, taking_amount={}", making_amount, taking_amount);
 
         Ok(making_amount)
     }
 
-    /// Execute the actual swap
+    /// Execute the swap
     fn execute_swap(
         &self,
         order: &Order,
@@ -134,14 +132,14 @@ impl OrderLib {
     ) -> Result<(), LimitOrderError> {
         // Transfer tokens from taker to maker
         self.transfer_tokens(&order.taker_asset, taker, &order.maker, taking_amount)?;
-
+        
         // Transfer tokens from maker to taker
         self.transfer_tokens(&order.maker_asset, &order.maker, taker, making_amount)?;
-
+        
         Ok(())
     }
 
-    /// Transfer tokens between accounts
+    /// Transfer tokens
     fn transfer_tokens(
         &self,
         token: &AccountId,
@@ -151,13 +149,13 @@ impl OrderLib {
     ) -> Result<(), LimitOrderError> {
         if token.as_str() == "near" {
             // Native NEAR transfer
-            Promise::new(to.clone()).transfer(amount * ONE_NEAR);
+            Promise::new(to.clone()).transfer(NearToken::from_yoctonear(amount));
         } else {
-            // FT transfer via cross-contract call
+            // Fungible token transfer
             ext_ft::ext(token.clone())
-                .with_attached_deposit(ONE_NEAR)
                 .with_static_gas(GAS_FOR_FT_TRANSFER)
-                .ft_transfer_from(from.clone(), to.clone(), U128(amount), None);
+                .with_attached_deposit(NearToken::from_yoctonear(1))
+                .ft_transfer_from(from.clone(), to.clone(), amount, None);
         }
         Ok(())
     }
@@ -168,100 +166,91 @@ impl OrderLib {
     }
 }
 
-// External FT contract interface
+// External contract trait for fungible token transfers
 #[ext_contract(ext_ft)]
 pub trait FungibleToken {
-    fn ft_transfer_from(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128, memo: Option<String>);
+    fn ft_transfer_from(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: u128, memo: Option<String>);
 }
 
+/*
+ * The rest of this file holds the inline tests for the code above
+ * Learn more about Rust tests: https://doc.rust-lang.org/book/ch11-01-writing-tests.html
+ */
 #[cfg(test)]
 mod tests {
     use super::*;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
-    use near_sdk::{testing_env, AccountId};
-    use near_sdk::json_types::U128;
+    use near_sdk::testing_env;
 
     fn get_context(predecessor_account_id: AccountId) -> VMContextBuilder {
-        let mut builder = VMContextBuilder::new();
-        builder
-            .current_account_id(accounts(0))
-            .signer_account_id(predecessor_account_id.clone())
-            .predecessor_account_id(predecessor_account_id);
-        builder
+        VMContextBuilder::new()
+            .predecessor_account_id(predecessor_account_id)
+            .attached_deposit(NearToken::from_yoctonear(1))
     }
 
     fn create_test_order() -> Order {
         Order {
             salt: 12345,
-            maker: accounts(1),
-            receiver: accounts(2),
-            maker_asset: accounts(3),
-            taker_asset: accounts(4),
-            making_amount: U128(1000),
-            taking_amount: U128(500),
-            maker_traits: crate::types::MakerTraits {
-                use_bit_invalidator: false,
-                use_epoch_manager: false,
-                has_extension: false,
-                nonce_or_epoch: 0,
-                series: 0,
-            },
+            maker: accounts(0),
+            receiver: accounts(1),
+            maker_asset: accounts(2),
+            taker_asset: accounts(3),
+            making_amount: 1000,
+            taking_amount: 1000,
+            maker_traits: crate::types::MakerTraits::default(),
         }
     }
 
     fn create_test_extension() -> Extension {
         Extension {
-            making_amount_data: vec![],
-            taking_amount_data: vec![],
+            maker_amount_data: vec![],
+            taker_amount_data: vec![],
             predicate_data: vec![],
-            interaction_data: vec![],
+            permit_data: vec![],
+            pre_interaction_data: vec![],
+            post_interaction_data: vec![],
         }
     }
 
     #[test]
     fn test_new() {
-        let context = get_context(accounts(1));
+        let context = get_context(accounts(0));
         testing_env!(context.build());
-        
-        let domain_separator = [1u8; 32];
-        let contract = OrderLib::new(domain_separator);
-        
-        assert_eq!(contract.get_domain_separator(), domain_separator);
+
+        let contract = OrderLib::new([0u8; 32]);
+        assert_eq!(contract.get_domain_separator(), [0u8; 32]);
     }
 
     #[test]
     fn test_hash_order() {
-        let context = get_context(accounts(1));
+        let context = get_context(accounts(0));
         testing_env!(context.build());
-        
-        let contract = OrderLib::new([1u8; 32]);
+
+        let contract = OrderLib::new([0u8; 32]);
         let order = create_test_order();
-        
         let hash = contract.hash_order(order);
         assert_eq!(hash.len(), 32);
     }
 
     #[test]
     fn test_get_receiver() {
-        let context = get_context(accounts(1));
+        let context = get_context(accounts(0));
         testing_env!(context.build());
-        
-        let contract = OrderLib::new([1u8; 32]);
+
+        let contract = OrderLib::new([0u8; 32]);
         let order = create_test_order();
-        
         let receiver = contract.get_receiver(order);
-        assert_eq!(receiver, accounts(2));
+        assert_eq!(receiver, accounts(1)); // Should return the receiver from the order
     }
 
     #[test]
     fn test_validate_extension() {
-        let context = get_context(accounts(1));
+        let context = get_context(accounts(0));
         testing_env!(context.build());
-        
-        let contract = OrderLib::new([1u8; 32]);
+
+        let contract = OrderLib::new([0u8; 32]);
         let order = create_test_order();
         let extension = create_test_extension();
-        
         let result = contract.validate_extension(order, extension);
         assert!(result.is_ok());
     }

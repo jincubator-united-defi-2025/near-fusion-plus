@@ -3,7 +3,6 @@ use near_sdk::{
     serde::{Deserialize, Serialize},
     AccountId,
 };
-use near_sdk::json_types::U128;
 
 /// Order structure for limit orders
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -13,13 +12,13 @@ pub struct Order {
     pub receiver: AccountId,
     pub maker_asset: AccountId,
     pub taker_asset: AccountId,
-    pub making_amount: U128,
-    pub taking_amount: U128,
+    pub making_amount: u128,
+    pub taking_amount: u128,
     pub maker_traits: MakerTraits,
 }
 
 /// Maker traits for order customization
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct MakerTraits {
     pub use_bit_invalidator: bool,
     pub use_epoch_manager: bool,
@@ -56,7 +55,7 @@ impl MakerTraits {
 }
 
 /// Taker traits for order execution
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct TakerTraits {
     pub allow_multiple_fills: bool,
     pub allow_partial_fill: bool,
@@ -98,56 +97,59 @@ impl BitInvalidatorData {
         self.slots.contains(&slot)
     }
 
-    /// Mass invalidate slots
+    /// Mass invalidate orders
     pub fn mass_invalidate(&mut self, nonce_or_epoch: u64, additional_mask: u64) -> u64 {
-        let slot_index = nonce_or_epoch >> 8;
-        let slot_value = (nonce_or_epoch & 0xFF) | additional_mask;
-        self.slots.push(slot_index);
-        slot_value
+        let slot = nonce_or_epoch >> 8;
+        if !self.slots.contains(&slot) {
+            self.slots.push(slot);
+        }
+        additional_mask
     }
 }
 
-/// Remaining invalidator for order tracking
+/// Remaining invalidator for tracking order fills
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, Default)]
 pub struct RemainingInvalidator {
-    pub remaining: U128,
+    pub remaining: u128,
 }
 
 impl RemainingInvalidator {
     /// Create a fully filled invalidator
     pub fn fully_filled() -> Self {
-        Self { remaining: U128(0) }
+        Self { remaining: 0 }
     }
 
     /// Get remaining amount
     pub fn remaining(&self) -> u128 {
-        self.remaining.0
+        self.remaining
     }
 
-    /// Update remaining amount
-    pub fn update_remaining(&mut self, new_remaining: u128) {
-        self.remaining = U128(new_remaining);
+    /// Create new invalidator with remaining amount
+    pub fn new(remaining: u128) -> Self {
+        Self { remaining }
     }
 }
 
-/// Extension data for orders
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug)]
+/// Extension data for order customization
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Extension {
-    pub making_amount_data: Vec<u8>,
-    pub taking_amount_data: Vec<u8>,
+    pub maker_amount_data: Vec<u8>,
+    pub taker_amount_data: Vec<u8>,
     pub predicate_data: Vec<u8>,
-    pub interaction_data: Vec<u8>,
+    pub permit_data: Vec<u8>,
+    pub pre_interaction_data: Vec<u8>,
+    pub post_interaction_data: Vec<u8>,
 }
 
 impl Extension {
-    /// Get making amount data
-    pub fn making_amount_data(&self) -> &[u8] {
-        &self.making_amount_data
+    /// Get maker amount data
+    pub fn maker_amount_data(&self) -> &[u8] {
+        &self.maker_amount_data
     }
 
-    /// Get taking amount data
-    pub fn taking_amount_data(&self) -> &[u8] {
-        &self.taking_amount_data
+    /// Get taker amount data
+    pub fn taker_amount_data(&self) -> &[u8] {
+        &self.taker_amount_data
     }
 
     /// Get predicate data
@@ -155,19 +157,29 @@ impl Extension {
         &self.predicate_data
     }
 
-    /// Get interaction data
-    pub fn interaction_data(&self) -> &[u8] {
-        &self.interaction_data
+    /// Get permit data
+    pub fn permit_data(&self) -> &[u8] {
+        &self.permit_data
+    }
+
+    /// Get pre-interaction data
+    pub fn pre_interaction_data(&self) -> &[u8] {
+        &self.pre_interaction_data
+    }
+
+    /// Get post-interaction data
+    pub fn post_interaction_data(&self) -> &[u8] {
+        &self.post_interaction_data
     }
 }
 
-/// Custom errors for the limit order protocol
-#[derive(Debug)]
+/// Error types for limit order operations
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum LimitOrderError {
     InvalidatedOrder,
     TakingAmountExceeded,
     PrivateOrder,
-    BadSignature,
+    InvalidSignature,
     OrderExpired,
     WrongSeriesNonce,
     SwapWithZeroAmount,
@@ -185,4 +197,8 @@ pub enum LimitOrderError {
     MissingOrderExtension,
     UnexpectedOrderExtension,
     InvalidExtensionHash,
+    ContractPaused,
+    OrderInvalidated,
+    InvalidAmounts,
+    InvalidExtension,
 } 

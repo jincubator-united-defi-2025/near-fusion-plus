@@ -1,3 +1,4 @@
+// Find all our documentation at https://docs.near.org
 // Limit Order Protocol contracts for NEAR
 // Migrated from Solidity contracts
 
@@ -6,8 +7,6 @@ pub mod order_mixin;
 pub mod order_lib;
 pub mod types;
 pub mod utils;
-
-use near_sdk::near;
 
 // Re-export main contract types for easy access
 pub use limit_order_protocol::LimitOrderProtocol;
