@@ -29,16 +29,47 @@ This project successfully migrates 1inch Protocol's cross-chain swap and limit o
    - Maker-focused withdrawal logic
 
 4. **EscrowFactory** (`src/escrow-factory/`)
+
    - Factory contract for creating escrows
    - Order validation and processing
    - Cross-chain coordination
 
+5. **BaseEscrowFactory** (`src/base-escrow-factory/`)
+
+   - Advanced factory with Merkle validation support
+   - Proxy-based deployment capabilities
+   - Multiple fill support with cryptographic proofs
+
+6. **MerkleStorageInvalidator** (`src/merkle-storage-invalidator/`)
+   - Merkle proof validation for multiple fills
+   - Cryptographic validation of order integrity
+   - Support for complex order structures
+
 #### Limit Order Protocol Contracts
 
-5. **LimitOrderProtocol** (`src/limit-order-protocol/`)
+7. **LimitOrderProtocol** (`src/limit-order-protocol/`)
+
    - Complete limit order protocol implementation
    - Order creation, validation, and execution
    - Extension support and signature validation
+
+8. **OrderMixin** (`src/limit-order-protocol/`)
+
+   - Core order processing logic
+   - Order validation and execution
+   - Integration with main protocol
+
+9. **OrderLib** (`src/limit-order-protocol/`)
+   - Order processing utilities
+   - Amount calculations and validations
+   - Helper functions for order management
+
+#### Extension Contracts
+
+10. **FeeTaker** (`src/fee-taker/`)
+    - Fee collection extension for limit orders
+    - Flexible fee distribution mechanisms
+    - Access token integration for advanced features
 
 ## 🏗️ Architecture
 
@@ -49,8 +80,12 @@ src/
 ├── cross-chain-swap/          # Base escrow functionality
 ├── escrow-src/               # Source chain escrow
 ├── escrow-dst/               # Destination chain escrow
-├── escrow-factory/           # Factory for escrow creation
-└── limit-order-protocol/     # Limit order protocol
+├── escrow-factory/           # Basic factory for escrow creation
+├── base-escrow-factory/      # Advanced factory with Merkle support
+├── merkle-storage-invalidator/ # Merkle proof validation
+├── limit-order-protocol/     # Main limit order protocol
+├── fee-taker/               # Fee collection extension
+└── integration-tests/        # Comprehensive integration tests
 ```
 
 ### Key Features
@@ -60,6 +95,8 @@ src/
 - **Security**: Comprehensive access control and validation
 - **Interoperability**: Cross-contract communication
 - **Timelock Management**: Configurable rescue delays
+- **Advanced Features**: Merkle validation, proxy support, fee collection
+- **Extension System**: Extensible architecture for advanced functionality
 
 ## 🧪 Testing
 
@@ -76,6 +113,9 @@ Comprehensive test suite covering:
 - Order validation and amount calculations
 - Timelock functionality
 - Factory configuration
+- Merkle proof validation
+- Multiple fill support
+- Advanced factory features
 
 #### Limit Order Protocol Tests (13 scenarios)
 
@@ -91,6 +131,7 @@ Comprehensive test suite covering:
 - Protocol configuration
 - Error handling
 - State management
+- Fee collection testing
 
 ### Running Tests
 
@@ -151,7 +192,10 @@ cd src/cross-chain-swap && cargo build --target wasm32-unknown-unknown --release
 cd ../escrow-src && cargo build --target wasm32-unknown-unknown --release
 cd ../escrow-dst && cargo build --target wasm32-unknown-unknown --release
 cd ../escrow-factory && cargo build --target wasm32-unknown-unknown --release
+cd ../base-escrow-factory && cargo build --target wasm32-unknown-unknown --release
+cd ../merkle-storage-invalidator && cargo build --target wasm32-unknown-unknown --release
 cd ../limit-order-protocol && cargo build --target wasm32-unknown-unknown --release
+cd ../fee-taker && cargo build --target wasm32-unknown-unknown --release
 ```
 
 #### Deploy Contracts
@@ -162,7 +206,10 @@ near deploy <account-id>.base-escrow src/cross-chain-swap/target/wasm32-unknown-
 near deploy <account-id>.escrow-src src/escrow-src/target/wasm32-unknown-unknown/release/escrow_src.wasm
 near deploy <account-id>.escrow-dst src/escrow-dst/target/wasm32-unknown-unknown/release/escrow_dst.wasm
 near deploy <account-id>.escrow-factory src/escrow-factory/target/wasm32-unknown-unknown/release/escrow_factory.wasm
+near deploy <account-id>.base-escrow-factory src/base-escrow-factory/target/wasm32-unknown-unknown/release/base_escrow_factory.wasm
+near deploy <account-id>.merkle-storage-invalidator src/merkle-storage-invalidator/target/wasm32-unknown-unknown/release/merkle_storage_invalidator.wasm
 near deploy <account-id>.limit-order-protocol src/limit-order-protocol/target/wasm32-unknown-unknown/release/limit_order_protocol.wasm
+near deploy <account-id>.fee-taker src/fee-taker/target/wasm32-unknown-unknown/release/fee_taker.wasm
 ```
 
 #### Initialize Contracts
@@ -186,8 +233,29 @@ near call <account-id>.escrow-factory new '{
   "rescue_delay_dst": 3600
 }' --accountId <account-id>
 
+# Initialize base escrow factory
+near call <account-id>.base-escrow-factory new '{
+  "limit_order_protocol": "<account-id>.limit-order-protocol",
+  "fee_token": "<account-id>.token",
+  "access_token": "<account-id>.token",
+  "rescue_delay_src": 3600,
+  "rescue_delay_dst": 3600,
+  "escrow_src_implementation": "<account-id>.escrow-src",
+  "escrow_dst_implementation": "<account-id>.escrow-dst"
+}' --accountId <account-id>
+
+# Initialize merkle storage invalidator
+near call <account-id>.merkle-storage-invalidator new '{"limit_order_protocol": "<account-id>.limit-order-protocol"}' --accountId <account-id>
+
 # Initialize limit order protocol
 near call <account-id>.limit-order-protocol new '{"domain_separator": "0000000000000000000000000000000000000000000000000000000000000000"}' --accountId <account-id>
+
+# Initialize fee taker
+near call <account-id>.fee-taker new '{
+  "limit_order_protocol": "<account-id>.limit-order-protocol",
+  "access_token": "<account-id>.token",
+  "weth": "<account-id>.weth"
+}' --accountId <account-id>
 ```
 
 ## 🔧 Contract Addresses
@@ -198,7 +266,10 @@ After deployment, contracts will be available at:
 - **Escrow Source**: `<account-id>.escrow-src`
 - **Escrow Destination**: `<account-id>.escrow-dst`
 - **Escrow Factory**: `<account-id>.escrow-factory`
+- **Base Escrow Factory**: `<account-id>.base-escrow-factory`
+- **Merkle Storage Invalidator**: `<account-id>.merkle-storage-invalidator`
 - **Limit Order Protocol**: `<account-id>.limit-order-protocol`
+- **Fee Taker**: `<account-id>.fee-taker`
 
 ## 🛡️ Security Features
 
@@ -207,24 +278,28 @@ After deployment, contracts will be available at:
 - Owner-based permissions for all contracts
 - Access token integration for additional security
 - Role-based access (maker, taker, public)
+- Limit order protocol validation
 
 ### Cryptographic Security
 
 - Keccak256 hash verification for secrets
 - Cryptographic signature validation
 - Secure secret exchange mechanism
+- Merkle proof validation for complex orders
 
 ### Timelock Management
 
 - Configurable rescue delays (default: 1 hour)
 - Stage-based access control
 - Order expiration handling
+- Advanced timelock features
 
 ### Error Handling
 
 - Comprehensive error types and messages
 - Input validation and parameter checking
 - Graceful failure handling
+- Advanced error recovery mechanisms
 
 ## 📊 Performance Optimizations
 
@@ -233,12 +308,14 @@ After deployment, contracts will be available at:
 - Optimized WASM output for minimal gas usage
 - Efficient storage patterns
 - Minimal cross-contract calls
+- Advanced optimization techniques
 
 ### Build Optimizations
 
 - Release builds with code size reduction
 - Optimized execution paths
 - Efficient data structures
+- Advanced compilation optimizations
 
 ## 🧪 Testing Strategy
 
@@ -247,18 +324,21 @@ After deployment, contracts will be available at:
 - Complete coverage for all contracts
 - Edge case testing
 - Error scenario validation
+- Advanced functionality testing
 
 ### Integration Tests
 
 - Cross-contract interaction testing
 - End-to-end workflow validation
 - Performance and gas usage testing
+- Advanced feature testing
 
 ### Deployment Testing
 
 - Automated deployment verification
 - Post-deployment functionality testing
 - Basic contract interaction validation
+- Advanced contract interaction testing
 
 ## 📋 Usage Examples
 
@@ -296,7 +376,36 @@ After deployment, contracts will be available at:
    }' --accountId <taker-account>
    ```
 
-### Limit Order Protocol
+### Advanced Cross-Chain Swap with Merkle Validation
+
+1. **Create Advanced Order**
+
+   ```bash
+   # Create order with multiple fill support
+   near call <account-id>.base-escrow-factory post_interaction '{
+     "order": {...},
+     "extension": {...},
+     "order_hash": "...",
+     "taker": "<taker-account>",
+     "making_amount": "1000",
+     "extra_data": "..."
+   }' --accountId <account-id>
+   ```
+
+2. **Validate Merkle Proof**
+
+   ```bash
+   # Validate proof for multiple fills
+   near call <account-id>.merkle-storage-invalidator taker_interaction '{
+     "order": {...},
+     "extension": {...},
+     "order_hash": "...",
+     "taker": "<taker-account>",
+     "extra_data": "..."
+   }' --accountId <account-id>
+   ```
+
+### Limit Order Protocol with Fee Collection
 
 1. **Create Order**
 
@@ -308,7 +417,7 @@ After deployment, contracts will be available at:
    }' --accountId <maker-account>
    ```
 
-2. **Fill Order**
+2. **Fill Order with Fee**
    ```bash
    near call <account-id>.limit-order-protocol fill_order '{
      "order": {...},
@@ -332,6 +441,11 @@ near view <account-id>.base-escrow get_owner
 
 # Test contract calls
 near call <account-id>.limit-order-protocol pause --accountId <account-id>
+
+# Check advanced features
+near view <account-id>.base-escrow-factory get_validation_data '{"key": "..."}'
+near view <account-id>.merkle-storage-invalidator get_last_validated '{"key": "..."}'
+near view <account-id>.fee-taker get_owner
 ```
 
 ### Performance Monitoring
@@ -339,12 +453,14 @@ near call <account-id>.limit-order-protocol pause --accountId <account-id>
 - Monitor gas usage for operations
 - Track contract interactions
 - Monitor error rates and types
+- Advanced performance metrics
 
 ### Security Monitoring
 
 - Monitor access control events
 - Track timelock operations
 - Monitor cryptographic operations
+- Advanced security monitoring
 
 ## 🚨 Troubleshooting
 
@@ -389,6 +505,9 @@ near call <contract-id> pause --accountId <account-id>
 
 # Verify deployment
 ./deployment-scripts/verify.sh testnet <account-id>
+
+# Test advanced features
+near call <contract-id> taker_interaction '{"order": {...}, "extension": {...}}' --accountId <account-id>
 ```
 
 ## 📈 Next Steps
@@ -399,6 +518,7 @@ near call <contract-id> pause --accountId <account-id>
 2. **Run Integration Tests**: Validate functionality
 3. **Verify Deployment**: Check contract state
 4. **Test User Interactions**: Validate workflows
+5. **Test Advanced Features**: Validate Merkle validation and fee collection
 
 ### Production Preparation
 
@@ -421,18 +541,21 @@ near call <contract-id> pause --accountId <account-id>
 - Each contract has detailed README
 - Function documentation and examples
 - Security considerations and best practices
+- Advanced feature documentation
 
 ### Testing Documentation
 
 - Integration test guide
 - Test scenario descriptions
 - Troubleshooting guide
+- Advanced testing procedures
 
 ### Deployment Documentation
 
 - Automated deployment guide
 - Manual deployment instructions
 - Verification procedures
+- Advanced deployment features
 
 ## 🎯 Success Metrics
 
@@ -443,6 +566,7 @@ near call <contract-id> pause --accountId <account-id>
 - ✅ Integration tests implemented
 - ✅ Deployment automation complete
 - ✅ Security features implemented
+- ✅ Advanced features implemented (Merkle validation, fee collection)
 
 ### Functional Metrics
 
@@ -451,6 +575,7 @@ near call <contract-id> pause --accountId <account-id>
 - ✅ Access control and security
 - ✅ Timelock management
 - ✅ Error handling and validation
+- ✅ Advanced features (Merkle proofs, proxy support, fee collection)
 
 ## 📄 License
 
@@ -460,4 +585,4 @@ MIT License - See individual contract directories for specific license informati
 
 **Migration Status: ✅ COMPLETE**
 
-All 1inch Protocol contracts have been successfully migrated to NEAR Protocol with comprehensive testing, deployment automation, and production-ready implementations.
+All 1inch Protocol contracts have been successfully migrated to NEAR Protocol with comprehensive testing, deployment automation, and production-ready implementations. The migration includes all 10 contracts with advanced features such as Merkle validation, proxy support, and fee collection capabilities.

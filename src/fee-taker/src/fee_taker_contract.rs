@@ -1,9 +1,10 @@
 // Find all our documentation at https://docs.near.org
-use near_sdk::{
-    env, log, near, AccountId, NearToken, Promise, serde_json,
+use crate::types::{FeeTakerError, Order};
+use crate::utils::{
+    is_fee_applicable, parse_fee_config, transfer_tokens_with_fee, validate_fee_config,
+    validate_limit_order_protocol,
 };
-use crate::types::{Order, FeeTakerError};
-use crate::utils::{validate_limit_order_protocol, parse_fee_config, transfer_tokens_with_fee, validate_fee_config, is_fee_applicable};
+use near_sdk::{env, log, near, serde_json, AccountId, NearToken, Promise};
 
 /// Fee Taker extension contract for limit order protocol
 /// Handles fee collection for limit orders
@@ -30,11 +31,7 @@ impl Default for FeeTaker {
 impl FeeTaker {
     /// Initialize the contract
     #[init]
-    pub fn new(
-        limit_order_protocol: AccountId,
-        access_token: AccountId,
-        weth: AccountId,
-    ) -> Self {
+    pub fn new(limit_order_protocol: AccountId, access_token: AccountId, weth: AccountId) -> Self {
         Self {
             limit_order_protocol,
             access_token,
@@ -83,24 +80,26 @@ impl FeeTaker {
                     "receiver_id": order.receiver,
                     "amount": taking_amount.to_string(),
                     "msg": ""
-                })).unwrap(),
+                }))
+                .unwrap(),
                 NearToken::from_yoctonear(1),
                 near_sdk::Gas::from_tgas(10),
             );
         }
 
-        log!("Fee collected for order: order_hash={:?}, taker={}, amount={}", order_hash, taker, taking_amount);
+        log!(
+            "Fee collected for order: order_hash={:?}, taker={}, amount={}",
+            order_hash,
+            taker,
+            taking_amount
+        );
 
         Ok(())
     }
 
     /// Rescue funds accidentally sent to the contract
     #[handle_result]
-    pub fn rescue_funds(
-        &mut self,
-        token: AccountId,
-        amount: u128,
-    ) -> Result<(), FeeTakerError> {
+    pub fn rescue_funds(&mut self, token: AccountId, amount: u128) -> Result<(), FeeTakerError> {
         // Only owner can rescue funds
         if env::predecessor_account_id() != self.owner {
             return Err(FeeTakerError::OnlyOwner);
@@ -113,7 +112,8 @@ impl FeeTaker {
                 "receiver_id": self.owner,
                 "amount": amount.to_string(),
                 "msg": ""
-            })).unwrap(),
+            }))
+            .unwrap(),
             NearToken::from_yoctonear(1),
             near_sdk::Gas::from_tgas(10),
         );
@@ -180,11 +180,7 @@ mod tests {
         let context = get_context(accounts(0));
         testing_env!(context.build());
 
-        let contract = FeeTaker::new(
-            accounts(1),
-            accounts(2),
-            accounts(3),
-        );
+        let contract = FeeTaker::new(accounts(1), accounts(2), accounts(3));
         assert_eq!(contract.get_limit_order_protocol(), accounts(1));
         assert_eq!(contract.get_access_token(), accounts(2));
         assert_eq!(contract.get_weth(), accounts(3));
@@ -197,9 +193,21 @@ mod tests {
         testing_env!(context.build());
 
         let contract = FeeTaker::default();
-        assert_eq!(contract.get_limit_order_protocol(), accounts(0));
-        assert_eq!(contract.get_access_token(), accounts(0));
-        assert_eq!(contract.get_weth(), accounts(0));
-        assert_eq!(contract.get_owner(), accounts(0));
+        assert_eq!(
+            contract.get_limit_order_protocol(),
+            AccountId::try_from("test.near".to_string()).unwrap()
+        );
+        assert_eq!(
+            contract.get_access_token(),
+            AccountId::try_from("test.near".to_string()).unwrap()
+        );
+        assert_eq!(
+            contract.get_weth(),
+            AccountId::try_from("test.near".to_string()).unwrap()
+        );
+        assert_eq!(
+            contract.get_owner(),
+            AccountId::try_from("test.near".to_string()).unwrap()
+        );
     }
-} 
+}

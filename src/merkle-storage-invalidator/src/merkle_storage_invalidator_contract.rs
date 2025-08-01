@@ -163,7 +163,7 @@ mod tests {
         testing_env!(context.build());
 
         let contract = MerkleStorageInvalidator::default();
-        assert_eq!(contract.get_limit_order_protocol(), accounts(0));
+        assert_eq!(contract.get_limit_order_protocol(), AccountId::try_from("test.near".to_string()).unwrap());
     }
 
     #[test]
