@@ -1,0 +1,2 @@
+cargo:rerun-if-env-changed=NEAR_SANDBOX_BIN_PATH
+Installed near-sandbox into /Users/johnwhitton/dev/research/jincubator-united-defi-2025/near-fusion-plus/src/limit-order-protocol/target/debug/build/near-sandbox-utils-8ab35459a4063776/out/.near/near-sandbox-2.0.0/near-sandbox

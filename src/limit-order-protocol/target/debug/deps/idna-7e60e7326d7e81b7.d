@@ -1,0 +1,10 @@
+/Users/johnwhitton/dev/research/jincubator-united-defi-2025/near-fusion-plus/src/limit-order-protocol/target/debug/deps/libidna-7e60e7326d7e81b7.rmeta: /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/lib.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/deprecated.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/punycode.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/uts46.rs
+
+/Users/johnwhitton/dev/research/jincubator-united-defi-2025/near-fusion-plus/src/limit-order-protocol/target/debug/deps/libidna-7e60e7326d7e81b7.rlib: /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/lib.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/deprecated.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/punycode.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/uts46.rs
+
+/Users/johnwhitton/dev/research/jincubator-united-defi-2025/near-fusion-plus/src/limit-order-protocol/target/debug/deps/idna-7e60e7326d7e81b7.d: /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/lib.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/deprecated.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/punycode.rs /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/uts46.rs
+
+/Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/lib.rs:
+/Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/deprecated.rs:
+/Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/punycode.rs:
+/Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/idna-1.0.3/src/uts46.rs:

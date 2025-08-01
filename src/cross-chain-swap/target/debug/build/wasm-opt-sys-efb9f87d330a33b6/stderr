@@ -1,0 +1,8 @@
+
+CXX include path:
+  /Users/johnwhitton/dev/research/jincubator-united-defi-2025/near-fusion-plus/src/cross-chain-swap/target/debug/build/wasm-opt-sys-efb9f87d330a33b6/out/cxxbridge/include
+  /Users/johnwhitton/dev/research/jincubator-united-defi-2025/near-fusion-plus/src/cross-chain-swap/target/debug/build/wasm-opt-sys-efb9f87d330a33b6/out/cxxbridge/crate
+  /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-opt-sys-0.116.0/binaryen/src
+  /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-opt-sys-0.116.0/binaryen/src/tools
+  /Users/johnwhitton/dev/research/jincubator-united-defi-2025/near-fusion-plus/src/cross-chain-swap/target/debug/build/wasm-opt-sys-efb9f87d330a33b6/out
+  /Users/johnwhitton/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasm-opt-sys-0.116.0/binaryen/third_party/llvm-project/include

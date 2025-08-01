@@ -1,1 +1,5 @@
 /target
+
+/src/cross-chain-swap/1inch/
+/src/limit-order-protocol/1inch/
+/src/examples/
