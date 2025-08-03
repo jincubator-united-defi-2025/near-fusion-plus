@@ -33,7 +33,9 @@ impl Default for Order {
 }
 
 /// Maker traits for order customization
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[derive(
+    BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default,
+)]
 pub struct MakerTraits {
     pub use_bit_invalidator: bool,
     pub use_epoch_manager: bool,
@@ -218,4 +220,4 @@ impl AsRef<str> for FactoryError {
             FactoryError::InvalidProof => "InvalidProof",
         }
     }
-} 
+}

@@ -6,7 +6,7 @@ Integration of Fusion+ with NEAR
 
 Initial development of Jincubator NEAR Fusion+ is being developed as part of Unite DeFi 2025.
 
-Key Features
+**Key Features**
 
 - [1inch Limit Order Protocol](https://github.com/1inch/limit-order-protocol): Migration from Solidity to NEAR Rust Contracts
 - [1inch Cross Chain Swap](https://github.com/1inch/cross-chain-swap): Migration from Solidity to NEAR Rust Contracts
@@ -18,15 +18,29 @@ For a technical overview please see [![Ask DeepWiki](https://deepwiki.com/badge.
 
 Install [`cargo-near`](https://github.com/near/cargo-near)
 
-Then and move into your contracts folder and
+Then run:
 
 ```bash
+# Build individual contracts (recommended)
+cd src/limit-order-protocol && cargo build --target wasm32-unknown-unknown --release
+cd src/cross-chain-swap && cargo build --target wasm32-unknown-unknown --release
+cd src/base-escrow-factory && cargo build --target wasm32-unknown-unknown --release
+cd src/escrow-factory && cargo build --target wasm32-unknown-unknown --release
+cd src/escrow-src && cargo build --target wasm32-unknown-unknown --release
+cd src/escrow-dst && cargo build --target wasm32-unknown-unknown --release
+cd src/fee-taker && cargo build --target wasm32-unknown-unknown --release
+cd src/merkle-storage-invalidator && cargo build --target wasm32-unknown-unknown --release
+
+# Or build all contracts (interactive - requires user input)
 cargo near build
 ```
 
 ```bash
-cargo near test
+# Run tests
+cargo test
 ```
+
+**Note**: All contracts have been updated to use NEAR SDK v5.15.1 and compatible dependency versions. The `cargo near build` command requires interactive input, so the direct `cargo build` commands are recommended for automated builds.
 
 ## How to Deploy?
 
