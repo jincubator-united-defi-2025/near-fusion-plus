@@ -4,7 +4,12 @@ Integration of Fusion+ with NEAR
 
 ## Overview
 
-Initial development of Jincubatore NEAR Fusion+ is being developed as part of Unite DeFi 2025.
+Initial development of Jincubator NEAR Fusion+ is being developed as part of Unite DeFi 2025.
+
+Key Features
+
+- [1inch Limit Order Protocol](https://github.com/1inch/limit-order-protocol): Migration from Solidity to NEAR Rust Contracts
+- [1inch Cross Chain Swap](https://github.com/1inch/cross-chain-swap): Migration from Solidity to NEAR Rust Contracts
 
 For a technical overview please see [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/jincubator-united-defi-2025/near-fusion-plus)
 
@@ -49,3 +54,5 @@ cargo near deploy build-reproducible-wasm <account-id>
 - [NEAR Discord](https://near.chat)
 - [NEAR Telegram Developers Community Group](https://t.me/neardev)
 - NEAR DevHub: [Telegram](https://t.me/neardevhub), [Twitter](https://twitter.com/neardevhub)
+
+## Technical References
